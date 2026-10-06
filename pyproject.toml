@@ -11,15 +11,15 @@ requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "Gyusoup Lee"}]
 
-[project.urls]
-Repository = "https://github.com/GSLee2016/fefet-reservoir"
-
 # Runtime dependencies: numpy, pyyaml, and matplotlib (result plots).
 dependencies = [
     "numpy>=1.24",
     "matplotlib>=3.7",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/GSLee2016/fefet-reservoir"
 
 [tool.setuptools.packages.find]
 include = ["fefet_reservoir*"]
