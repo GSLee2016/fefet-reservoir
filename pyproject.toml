@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fefet-reservoir"
+version = "0.1.0"
+description = "Physical reservoir computing with ferroelectric / antiferroelectric FETs: a compact-model device simulator and device-level RC benchmarks (STM / PC)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Gyusoup Lee"}]
+
+[project.urls]
+Repository = "https://github.com/GSLee2016/fefet-reservoir"
+
+# Runtime dependencies: numpy, pyyaml, and matplotlib (result plots).
+dependencies = [
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["fefet_reservoir*"]

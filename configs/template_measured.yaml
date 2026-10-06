@@ -1,0 +1,63 @@
+# template_measured -- starting point for scoring your own measured data (path A)
+#
+# Copy this file (e.g. to configs/my_device.yaml), point dataset.path at the
+# folder holding your input.csv / response.csv, and revisit every value marked
+# REVISIT: the right value depends on your device and measurement, not on
+# this package. Then run:
+#   python -m fefet_reservoir score-rc configs/my_device.yaml
+#
+# Unedited, this file is valid but scoring fails on purpose:
+# REPLACE_WITH/your_measurement_directory does not exist, so a forgotten copy
+# stops with a clear message instead of scoring the wrong data.
+#
+# `python -m fefet_reservoir suggest <your data dir>` prints a dataset: block
+# with what can be read from your files (pulses per set, samples per pulse,
+# number of sets).
+
+dataset:
+  # REVISIT: the folder holding input.csv and response.csv.
+  path: REPLACE_WITH/your_measurement_directory
+
+  # REVISIT: number of pulses at the start of every set left out of scoring
+  # (the device's warm-up). Counted in pulses, not samples. Placeholder only:
+  # how long the warm-up lasts depends on your device.
+  washout: 5
+
+  # REVISIT: sets (columns of the two files, numbered from 1) used to train
+  # the readout, and sets held out to test it. Example split for a
+  # measurement with 10 sets; change both lines to match your number of sets.
+  train_sets: "1-8"
+  test_sets: "9-10"
+
+  # REVISIT: readout ridge regularisation strength. Example value only; set
+  # it for the scale of your own data.
+  ridge_lambda: 3.0e-16
+
+  # REVISIT: resolution of the converter that digitised your response:
+  # auto (bit count chosen from sample_interval below: >= 1 ms -> 16 bit,
+  # 1 us..1 ms -> 12, 100 ns..1 us -> 10, < 100 ns -> 8), the actual bit
+  # count of your instrument (1 to 24), or ideal (no quantization).
+  readout_bits: auto
+
+  # REVISIT: converter range [A]; it spans 0..readout_full_scale, so the
+  # response is read as a non-negative current (negative values become 0,
+  # values above the range are clipped to the top). Set it a little above
+  # the largest drain current you expect (about 1.2 x the expected maximum);
+  # a range much wider than the signal wastes resolution (each factor of 2
+  # costs one bit). Not needed with readout_bits: ideal.
+  readout_full_scale: 100.0e-6
+
+  # REVISIT: time between the samples recorded within one pulse [s]. Needed
+  # with readout_bits: auto.
+  sample_interval: 1.0e-6
+
+  # REVISIT: scoring protocol (required). kfold: the sets are shuffled once
+  # (shuffle_seed), then shifted one place at a time, once per set;
+  # train_sets and test_sets are applied to the positions in each shifted
+  # order, so every set is tested equally often. The capacity is the mean
+  # over all shifts. shuffle_seed (a whole number) is required with kfold;
+  # the same seed gives the same shuffle. The alternative, fixed: one
+  # train/test split, exactly as written above (then remove the
+  # shuffle_seed line).
+  protocol: kfold
+  shuffle_seed: 0

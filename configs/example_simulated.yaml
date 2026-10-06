@@ -1,0 +1,121 @@
+# example_simulated -- simulate a device and score it (path B: no hardware needed)
+#
+# One self-contained file: device parameters, input pulses, device noise, run
+# size and scoring settings. All values are examples; replace them with your
+# own. Run it with:
+#   python -m fefet_reservoir simulate-rc configs/example_simulated.yaml
+#   python -m fefet_reservoir score-rc    configs/example_simulated.yaml
+# simulate-rc writes input.csv / response.csv into simulation.output_dir;
+# dataset.path points at the same folder, so score-rc then scores them with
+# this same file, unchanged. This example is small (200 pulses x 4 sets) so
+# that it finishes in about two minutes: it is a quick installation check;
+# use more pulses and sets for a study.
+#
+# Ferroelectric-layer values: Chen et al., IEDM 2021 (Fig. 7(a)); device
+# geometry and MOSFET values are example values.
+#
+# Units are given in [ ] after each value.
+
+experiment: example_simulated   # name of this run (free text)
+
+# Device type: two example sets. t_ratio is the fraction of
+# antiferroelectric domains (0.0 for a ferroelectric FET).
+#   antiferroelectric FET (HZO, 75 % Zr) -- the values written below:
+#     device: afefet, t_ratio: 0.93, Ps: 18.42e-6, ea: 1.52e6,
+#     sigma_a: 0.35e6, eb: 1.41e6, sigma_b: 0.23e6, tau_inf: 223.0e-9,
+#     beta: 1.02, alpha: 4.11, dataset.readout_full_scale: 5.1e-6
+#   ferroelectric FET (HZO, 50 % Zr):
+#     device: fefet, t_ratio: 0.0, Ps: 18.35e-6, ea: 1.83e6,
+#     sigma_a: 0.43e6, tau_inf: 1203.0e-9, beta: 1.02, alpha: 4.11,
+#     dataset.readout_full_scale: 1.2e-5
+#     (a ferroelectric FET does not use eb and sigma_b, but keep both
+#     lines: simulate-rc requires every material value)
+device: afefet
+t_ratio: 0.93         # fraction of antiferroelectric domains (1.0 = all antiferroelectric)
+
+material:
+  Ps: 18.42e-6        # remanent polarization [C/cm^2]
+  tfe: 10.0e-9        # ferroelectric thickness [m]
+  Afe: 4.0e-8         # ferroelectric area [cm^2] (= 2 um x 2 um)
+  epsil_fe: 30.0      # ferroelectric relative permittivity [-]
+  ea: 1.52e6          # mean activation field [V/cm]
+  sigma_a: 0.35e6     # activation field standard deviation [V/cm]
+  eb: 1.41e6          # mean back-switching field [V/cm] (affects antiferroelectric domains only)
+  sigma_b: 0.23e6     # back-switching field standard deviation [V/cm] (antiferroelectric domains only)
+  # NLS switching: tau = tau_inf * exp((Ea / |E|)^alpha) is the switching
+  # time of a domain with activation field Ea at field E; beta is the
+  # exponent of the switching probability.
+  beta: 1.02          # switching-probability exponent [-]
+  alpha: 4.11         # field exponent in tau [-]
+  tau_inf: 223.0e-9   # characteristic switching time [s]
+
+mosfet:
+  Na: 1.0e17          # channel doping concentration [cm^-3]
+  mobility: 300.0     # channel mobility [cm^2/(V*s)]
+  W: 10.0e-6          # channel width [m]
+  L: 10.0e-6          # channel length [m]
+  tox: 5.0e-9         # gate oxide thickness [m]
+  vfb: -0.4           # flat-band voltage [V]
+  eps_ox: 3.9         # gate insulator (SiO2) relative permittivity [-]
+  eps_si: 11.8        # silicon relative permittivity [-]
+  vds: 50.0e-3        # drain-source voltage [V]
+  vbs: 0.0            # bulk-source voltage [V]
+
+domains:
+  count: 2000         # number of switching domains in the ferroelectric layer
+
+pulse:
+  shape: square            # gate pulse shape: square or triangular
+  t_pw: 1.0e-6             # pulse width [s]
+  signal_off: 1.0          # gate voltage for input 0 [V]
+  signal_on: 3.5           # gate voltage for input 1 [V]
+  samples_per_step: 20     # response samples recorded per pulse (time between samples = t_pw / samples_per_step)
+  vin_sampling: endpoint   # endpoint, or half_sample_offset (shifts the whole waveform by half a sample)
+
+physics:
+  # Device noise: standard deviation as a fraction of the read current
+  # (0.002 = 0.2 %; 0 = none).
+  device_noise: 0.002
+
+# Run size for simulate-rc. All four keys must be written here; if one is
+# missing, simulate-rc stops and says which.
+simulation:
+  n_inputs: 200                          # pulses per set
+  n_sets: 4                              # independent runs (sets), at least 2
+  seed: 12345                            # random seed; the same seed gives the same data
+  output_dir: results/example_simulated  # where input.csv / response.csv are written
+
+# Scoring settings for score-rc. Values that change the score must be written
+# here; if one is missing or invalid, score-rc stops and says what to fix
+# (dataset.max_delay, not written here, is 20 when omitted).
+dataset:
+  path: results/example_simulated   # folder holding input.csv / response.csv
+  # Pulses at the start of every set left out of scoring (device warm-up);
+  # here half of simulation.n_inputs, a starting point only.
+  washout: 100
+  # Sets (columns) used to train the readout: 3 of the 4 simulated sets.
+  train_sets: "1-3"
+  # Set held out to test it.
+  test_sets: [4]
+  # Readout ridge regularisation strength. Example value; set it for the
+  # scale of your own data.
+  ridge_lambda: 3.0e-16
+  # Readout converter resolution: auto (bit count chosen from the time
+  # between samples, here t_pw / samples_per_step = 1.0e-6 / 20 = 50 ns ->
+  # 8 bit), a whole number of bits (1 to 24), or ideal (no quantization).
+  readout_bits: auto
+  # Converter range [A]; it spans 0..readout_full_scale. Set it a little
+  # above the largest current expected (about 1.2 x the expected maximum):
+  # the simulated drain current of this example peaks near 4.3 uA. A range
+  # much wider than the signal wastes resolution (each factor of 2 costs
+  # one bit).
+  readout_full_scale: 5.1e-6
+  # Scoring protocol (required). kfold: the sets are shuffled once
+  # (shuffle_seed), then shifted one place at a time, once per set;
+  # train_sets and test_sets are applied to the positions in each shifted
+  # order, so every set is tested equally often. The capacity is the mean
+  # over all shifts. shuffle_seed is required with kfold.
+  # The alternative, fixed: one train/test split, exactly as written above
+  # (then remove the shuffle_seed line).
+  protocol: kfold
+  shuffle_seed: 0
